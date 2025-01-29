@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>nl.mpi.tla.flat.deposit</groupId>
+    <artifactId>fc6</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    	<dependencies>
+		<dependency>
+			<groupId>nl.mpi.tla</groupId>
+			<artifactId>SaxonUtils</artifactId>
+			<version>2.0-SNAPSHOT</version>
+		</dependency>
+                <dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>fluent-hc</artifactId>
+			<version>4.5.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.fcrepo.client</groupId>
+			<artifactId>fcrepo-java-client</artifactId>
+			<version>6.1.0</version>
+		</dependency>
+                <!-- https://mvnrepository.com/artifact/org.json/json -->
+                <dependency>
+                    <groupId>org.json</groupId>
+                    <artifactId>json</artifactId>
+                    <version>20240303</version>
+                </dependency>
+
+	</dependencies>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <exec.mainClass>nl.mpi.tla.flat.deposit.fc6.Fc6</exec.mainClass>
+    </properties>
+    	<build>
+		<plugins>
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>make-assembly doorkeeper</id>
+						<!-- this is used for inheritance merges -->
+						<phase>package</phase>
+						<!-- bind to the packaging phase -->
+						<goals>
+							<goal>single</goal>
+						</goals>
+						<configuration>
+							<archive>
+								<manifest>
+									<mainClass>nl.mpi.tla.flat.deposit.fc6.Fc6</mainClass>
+								</manifest>
+							</archive>
+							<descriptorRefs>
+								<descriptorRef>jar-with-dependencies</descriptorRef>
+							</descriptorRefs>
+							<finalName>doorkeeper</finalName>
+							<appendAssemblyId>false</appendAssemblyId>
+							<attach>false</attach>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.19</version>
+				<configuration>
+					<argLine>-noverify</argLine>
+				</configuration>
+			</plugin>
+		        <plugin>
+		            <groupId>org.codehaus.mojo</groupId>
+		            <artifactId>exec-maven-plugin</artifactId>
+		            <version>3.1.0</version>
+		            <configuration>
+		                <mainClass>nl.mpi.tla.flat.deposit.fc6.Fc6</mainClass>
+		            </configuration>
+		        </plugin>
+		</plugins>
+	</build>
+	<repositories>
+		<repository>
+			<id>CLARIN</id>
+			<url>https://nexus.clarin.eu/content/repositories/Clarin</url>
+		</repository>
+		<repository>
+			<id>CLARIN-Snapshot</id>
+			<name>CLARIN Snapshot Repository</name>
+			<url>https://nexus.clarin.eu/content/repositories/clarin-snapshot</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+
+		<repository>
+			<id>central</id>
+			<name>Central Repository</name>
+			<url>https://repo.maven.apache.org/maven2</url>
+			<layout>default</layout>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+		<!-- needed for fast-md5 -->
+		<repository>
+			<id>Geomajas</id>
+			<name>Geomajas repository</name>
+			<url>http://maven.geomajas.org/</url>
+		</repository>
+		<repository>
+			<id>jitpack.io</id>
+			<url>https://jitpack.io</url>
+		</repository>
+	</repositories>
+</project>
