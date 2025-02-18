@@ -1,0 +1,44 @@
+Creating Drupal entities for a "Bundle":
+
+create file entity (for each file within the bundle):
+curl -i -X POST -u admin:islandora -H"Content-type: application/json" --data '{"type":[{"target_id":"FILETYPE"}],"filename":[{"value":"FILENAME"}],"uri":[{"value":"FEDORA_STREAMWRAPPED_URI"}]}' 'DRUPAL_FILE_REST_ENDPOINT'
+
+create node entity (only once per bundle):
+curl -i -X POST -u admin:islandora -H"Content-type: application/json" --data '{"type":[{"target_id":"islandora_object","target_type":"node_type"}],"title":[{"value":"BUNDLENAME"}],"field_model":[{"target_id":FIELD_ISLANDORA_MODEL,"target_type":"taxonomy_term"}]}' 'DRUPAL_NODE_REST_ENDPOINT'
+
+create media entity (for each file within the bundle):
+curl -i -X POST -u admin:islandora -H"Content-type: application/json" --data '{"bundle":[{"target_id":"MEDIATYPE","target_type":"media_type"}],"name":[{"value":"FILENAME"}],"field_media_use":[{"target_id":"FIELD_MEDIA_USE","target_type":"taxonomy_term"}],"RELATION":[{"target_id":FILE_ID}],"field_media_of":[{"target_id":NODE_ID}]}' 'DRUPAL_MEDIA_REST_ENDPOINT'
+
+FILETYPE: value from that column in the table. Note that the "annotation" and "lexicon" values do not yet exist in a default Islandora installation, they should be added
+in Drupal admin->Structure->File types
+FILENAME: actual filename including file extension
+FEDORA_STREAMWRAPPED_URI: Drupal stream-wrapped URI of the file in fedora (e.g. fedora://test.png or fedora://parent_collection/test.png)
+DRUPAL_FILE_REST_ENDPOINT: http://localhost:8000/entity/file?_format=json (or other host and port depending on the installation)
+BUNDLENAME: name of the bundle SIP
+FIELD_ISLANDORA_MODEL: numeric value of the "Compound Object" taxonomy term (see in Drupal Admin->Structure->Taxonomy->Islandora Models).
+Value is stored in the table but needs to be modified for each installation.
+DRUPAL_NODE_REST_ENDPOINT: http://localhost:8000/node?_format=json (or other host and port depending on the installation)
+MEDIATYPE: value from that column in the table (currently the same values as FILETYPE but could be different as it is a different taxonomy in Drupal). The "annotation" and "lexicon"
+values do not yet exist in a default Islandora installation, they should be added in Drupal admin->Structure->Media types
+FIELD_MEDIA_USE: numeric value of the "Original File" taxonomy term (see in Drupal Admin->Structure->Taxonomy->Islandora Media Use) for all files except
+"annotation" files, for those it is the numeric value for "Transcript". Values are stored in the table but need to be modified for each installation.
+RELATION: value from that column in the table
+FILE_ID: Drupal numeric ID of the file that is being reference in the Media object. Will be returned after successful POST request on the file REST endpoint
+NODE_ID: Drupal numeric ID of the node that is being reference in the Media object. Will be returned after successful POST request on the node REST endpoint
+DRUPAL_MEDIA_REST_ENDPOINT: http://localhost:8000/entity/media?_format=json (or other host and port depending on the installation)
+
+
+
+Creating Drupal entities for a "Collection":
+
+For the moment we'll only create a node of type islandora_object and model "Collection". (At some point we may want to add the CMDI/DC/OLAC metadata as XML files)
+
+create node entity:
+curl -i -X POST -u admin:islandora -H"Content-type: application/json" --data '{"type":[{"target_id":"islandora_object","target_type":"node_type"}],"title":[{"value":"COLLECTIONNAME"}],"field_model":[{"target_id":FIELD_ISLANDORA_MODEL,"target_type":"taxonomy_term"}]}' 'DRUPAL_NODE_REST_ENDPOINT'
+
+COLLECTIONNAME: name of the collection SIP
+FIELD_ISLANDORA_MODEL: numeric value of the "Compound Object" taxonomy term (see in Drupal Admin->Structure->Taxonomy->Islandora Models). Value is not stored in the table a.t.m., should see where we can best configure this.
+DRUPAL_NODE_REST_ENDPOINT: http://localhost:8000/node?_format=json (or other host and port depending on the installation)
+
+
+
