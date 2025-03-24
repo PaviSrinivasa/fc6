@@ -21,7 +21,8 @@ import javax.xml.transform.stream.StreamSource;
 import net.sf.saxon.s9api.XdmNode;
 import nl.mpi.tla.util.Saxon;
 
-import org.json.JSONObject;
+import com.fasterxml.jackson.databind.*;
+import java.net.URISyntaxException;
 
 public class Fc6 {
     
@@ -55,26 +56,85 @@ public class Fc6 {
         public record CsvRecord(String filetype, String islandora_model, String mediatype, String media_use, String media_bundle_target_id, String relation) {}	
 
 	public static void main(String args[]) throws Exception {
-		
-            XdmNode info = fcrepo(new URI("lat:12345_comic_1_pdf/OBJ/fcr:metadata"));
-            //System.out.print("Info: "+ info.toString());
-            String title = Saxon.xpath2string(info, "normalize-space(//ebucore:filename)",null,NAMESPACES);
-            String mimetype = Saxon.xpath2string(info, "normalize-space(//ebucore:hasMimeType)",null,NAMESPACES);
-            String type = "unknown";
-
-            File mimefile = new File ("./src/main/java/nl/mpi/tla/flat/deposit/fc6/mime-mapping.csv");
-
-            Map<String,List<CsvRecord>> mmap = csvToMap(mimefile);
-
-            List<CsvRecord> matchingMimetype = mmap.getOrDefault(mimetype, Collections.emptyList()); 
-            System.out.println("matchingMimetype----------> "+matchingMimetype);
-            for( CsvRecord csvR : matchingMimetype){
-                type = csvR.filetype();
-                System.out.println("type--> "+type);
-            }
-
+            XdmNode info;
             try {
-                String jsonDataString = "{"
+                 info = fcrepo(new URI("lat_12345_comic_1_pdf/OBJ/fcr:metadata"));
+            }
+            catch (Exception e) {
+                throw new Exception("Unexpected status while querying! Error msg:"+e.getMessage());
+            }
+            if (!info.isEmpty()) {
+                String title = Saxon.xpath2string(info, "normalize-space(//ebucore:filename)",null,NAMESPACES);
+                String mimetype = Saxon.xpath2string(info, "normalize-space(//ebucore:hasMimeType)",null,NAMESPACES);
+
+                //Verify the below lines
+                XdmNode nodeInfo = fcrepo(new URI("lat_12345_comic_1"));
+                //XdmNode nodeInfo = fcrepo(new URI ("info:fedora/fedora-system:def/model#label"));
+                System.out.println("XdmNode: "+nodeInfo.toString());
+                String bundlename = Saxon.xpath2string(nodeInfo, "normalize-space(//dc:title)",null,NAMESPACES);
+                System.out.println("Bundlename:"+ bundlename);
+                // until here
+                String type = "unknown";
+                String field_islandora_model = "unknown";
+                String mediatype = "unknown";
+                String field_media_use = "Unknown";
+                String relation = "unknown";
+                String searchString = " ";
+
+                File mimefile = new File ("./src/main/java/nl/mpi/tla/flat/deposit/fc6/mime-mapping.csv");
+
+                Map<String,List<CsvRecord>> mmap = csvToMap(mimefile);
+
+                List<CsvRecord> matchingMimetype = mmap.getOrDefault(mimetype, Collections.emptyList()); 
+                System.out.println("matchingMimetype----------> "+matchingMimetype);
+                for( CsvRecord csvR : matchingMimetype){
+                    type = csvR.filetype();
+                    System.out.println("type--> "+type);
+                    field_islandora_model = csvR.islandora_model();
+                    System.out.println("field_islandora_model---->"+field_islandora_model);
+                    mediatype = csvR.mediatype();
+                    System.out.println("mediatype---->"+mediatype);
+                    field_media_use = csvR.media_use();
+                    System.out.println("field_media_use---->"+field_media_use);
+                    relation = csvR.relation();
+                    System.out.println("relation---->"+relation);
+                }
+
+
+                //node enitity
+                String jsonNodeString = "{"
+                                        + " \"type\": ["
+                                        + "   {"
+                                        + "      \"target_id\":\"" + "islandora_object" + "\","
+                                        + "      \"target_type\":\"" + "node_type" + "\""
+                                        + "   } "
+                                        + " ],"
+                                        + " \"title\": ["
+                                        + "   {"
+                                        + "       \"value\":\"" + bundlename + "\""
+                                        + "   }"
+                                        + " ],"
+                                        + " \"field_model\": ["
+                                        + "   {"
+                                        + "       \"target_id\": \""+ field_islandora_model +"\","
+                                        + "       \"target_type\": \""+ "taxonomy_term" +"\""
+                                        + "   }"
+                                        + " ],"
+                                        + " \"uid\": ["
+                                        + "   {"
+                                        + "       \"target_id\": 1 "
+                                        + "   }"
+                                        + " ]"
+                                        + "}";    
+
+                String endpointNode = "https://islandora.dev/node?_format=json";
+                searchString = "nid";
+
+                String nodeid = callHttpResponse(jsonNodeString, endpointNode, searchString);
+
+                //file entity
+
+                String jsonFileString = "{"
                                         + " \"type\": ["
                                         + "   {"
                                         + "      \"target_id\":\"" + type + "\""
@@ -87,91 +147,173 @@ public class Fc6 {
                                         + " ],"
                                         + " \"uri\": ["
                                         + "   {"
-                                        + "       \"value\": \"fedora://test123/testfile\" "
+                                        + "       \"value\": \"fedora://lat_12345_comic_1_pdf/OBJ\" "
+                                        + "   }"
+                                        + " ],"
+                                        + " \"uid\": ["
+                                        + "   {"
+                                        + "       \"target_id\": 1 "
                                         + "   }"
                                         + " ]"
-                                        + "}";                    
-            JSONObject js = new JSONObject();
-            System.out.print(js.toString());
+                                        + "}";  
 
-            String endpoint = "https://islandora.traefik.me/entity/file?_format=json";
+                String endpointFile = "https://islandora.dev/entity/file?_format=json";
+                searchString = "fid";
 
-            HttpClient httpClient = HttpClient.newBuilder().build();
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint))
-                    .header("content-type", "application/json")
-                    .POST(BodyPublishers.ofString(jsonDataString))
-                    .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(("admin:admin10"
-                            + "").getBytes()))
-                    .version(HttpClient.Version.HTTP_1_1)
-                    .build();
+                String fileid = callHttpResponse(jsonFileString, endpointFile, searchString);
 
-            HttpResponse response = httpClient.send(request, BodyHandlers.ofString());
+                //media entity   
+                String jsonMediaString = "{"
+                                        + " \"bundle\": ["
+                                        + "   {"
+                                        + "      \"target_id\":\"" + mediatype + "\","
+                                        + "      \"target_type\":\"" + "media_type" + "\""
+                                        + "   } "
+                                        + " ],"
+                                        + " \"name\": ["
+                                        + "   {"
+                                        + "       \"value\":\"" + title + "\""
+                                        + "   }"
+                                        + " ],"
+                                        + " \"field_media_use\": ["
+                                        + "   {"
+                                        + "       \"target_id\": \""+ field_media_use +"\","
+                                        + "       \"target_type\": \""+ "taxonomy_term" +"\""
+                                        + "   }"
+                                        + " ],"
+                                        + " \""+ relation+ "\": ["
+                                        + "   {"
+                                        + "       \"target_id\":\"" + fileid + "\""
+                                        + "   }"
+                                        + " ],"
+                                        + " \"field_media_of\": ["
+                                        + "   {"
+                                        + "       \"target_id\": \""+ nodeid +"\""
+                                        + "   }"
+                                        + " ],"
+                                        + " \"uid\": ["
+                                        + "   {"
+                                        + "       \"target_id\": 1 "
+                                        + "   }"
+                                        + " ]"
+                                        + "}";    
 
-            if (response.statusCode()==200 || response.statusCode()==201 ) {
-                System.out.print(response.headers());
-                System.out.print(response.body());
+                String endpointMedia = "https://islandora.dev/entity/media?_format=json";
+
+                HttpClient httpClientMedia = HttpClient.newBuilder().build();
+                HttpRequest requestMedia = HttpRequest.newBuilder()
+                        .uri(URI.create(endpointMedia))
+                        .header("content-type", "application/json")
+                        .POST(BodyPublishers.ofString(jsonMediaString))
+                        .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(("admin:admin10"
+                                + "").getBytes()))
+                        .version(HttpClient.Version.HTTP_1_1)
+                        .build();
+
+                HttpResponse responseMedia = httpClientMedia.send(requestMedia, BodyHandlers.ofString());
+                System.out.print(responseMedia.body());
+
+                if (responseMedia.statusCode()==200 || responseMedia.statusCode()==201 ) {
+                    System.out.println("Goed gedaan");
+                }
+                else
+                    throw new Exception("Unexpected status["+responseMedia.statusCode()+"] while querying! Error msg:");
             }
-            else
-                throw new Exception("Unexpected status["+response.statusCode()+"] while querying! Error msg:");
+            else {
+                System.out.println("The XdmNode is null");
+            }
         }
-        catch (Exception e) {
-            System.out.print("Error msg:"+e.getMessage());
-         throw e;   
-        }
-    }
                 
 
-    public static XdmNode fcrepo(URI fid) throws Exception {
-       XdmNode res = null;
-        URI uri = null;
-        try {
-            uri = new URI("http://islandora.traefik.me:8081/fcrepo/rest"+"/"+fid.toString());
-        } catch (Exception e) {
-            throw new Exception(e);   
-        }
-
-        try (FcrepoResponse response = new GetBuilder(uri, fedoraClient)
-            .accept("application/rdf+xml")
-            .perform()) {
-                res = Saxon.buildDocument(new StreamSource(response.getBody()));
-        } catch (Exception e) {
-             throw e;   
-        }
-        return res;
-    }
-
-    public static Map<String, List<CsvRecord>> csvToMap(File mimefile) {
-        Map<String,List<CsvRecord>> map = new HashMap<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(mimefile))){
-            String line;
-            while ((line = br.readLine()) != null){
-                String[] parts = line.split(";");
-
-                if(parts.length >= 7){
-                    String mimetype = parts[0].trim();
-                    String filetype = parts[1].trim();
-                    String islandora_model = parts[2].trim(); 
-                    String mediatype = parts[3].trim();
-                    String media_use = parts[4].trim();
-                    String media_bundle_target_id = parts[5].trim();
-                    String relation = parts[6].trim();
-
-                    CsvRecord csvRecord = new CsvRecord(filetype, islandora_model, mediatype, media_use, media_bundle_target_id, relation);
-                    map.putIfAbsent(mimetype, new ArrayList<>());
-                    map.get(mimetype).add(csvRecord);
-                }
+        public static XdmNode fcrepo(URI fid) throws Exception {
+           XdmNode res = null;
+            URI uri = null;
+            try {
+                uri = new URI("https://fcrepo.islandora.dev/fcrepo/rest"+"/"+fid.toString());
+            } catch (URISyntaxException e) {
+                throw new Exception(e);   
             }
 
-            map.forEach((mimetype,items) -> {
-               System.out.println (mimetype + " -> " + items );
-            });
+            try (FcrepoResponse response = new GetBuilder(uri, fedoraClient)
+                .accept("application/rdf+xml")
+                .perform()) {
+                    res = Saxon.buildDocument(new StreamSource(response.getBody()));
+            } catch (Exception e) {
+                 throw e;   
+            }
+            return res;
         }
-        catch(IOException e){
-            System.out.println("Something went wrong");
+
+        public static Map<String, List<CsvRecord>> csvToMap(File mimefile) {
+            Map<String,List<CsvRecord>> map = new HashMap<>();
+            try (BufferedReader br = new BufferedReader(new FileReader(mimefile))){
+                String line;
+                while ((line = br.readLine()) != null){
+                    String[] parts = line.split(";");
+
+                    if(parts.length >= 7){
+                        String mimetype = parts[0].trim();
+                        String filetype = parts[1].trim();
+                        String islandora_model = parts[2].trim(); 
+                        String mediatype = parts[3].trim();
+                        String media_use = parts[4].trim();
+                        String media_bundle_target_id = parts[5].trim();
+                        String relation = parts[6].trim();
+
+                        CsvRecord csvRecord = new CsvRecord(filetype, islandora_model, mediatype, media_use, media_bundle_target_id, relation);
+                        map.putIfAbsent(mimetype, new ArrayList<>());
+                        map.get(mimetype).add(csvRecord);
+                    }
+                }
+
+                map.forEach((mimetype,items) -> {
+                   System.out.println (mimetype + " -> " + items );
+                });
+            }
+            catch(IOException e){
+                System.out.println("Something went wrong");
+            }
+            return map;
         }
-        return map;
-    }
+        
+        private static String callHttpResponse(String jsonNodeString, String endpointNode, String searchString) throws Exception {
+            String foundString = "0";
+            try {
+                HttpClient httpClientNode = HttpClient.newBuilder().build();
+                HttpRequest requestNode = HttpRequest.newBuilder()
+                        .uri(URI.create(endpointNode))
+                        .header("content-type", "application/json")
+                        .POST(BodyPublishers.ofString(jsonNodeString))
+                        .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(("admin:admin10"
+                                + "").getBytes()))
+                        .version(HttpClient.Version.HTTP_1_1)
+                        .build();
+
+                HttpResponse response = httpClientNode.send(requestNode, BodyHandlers.ofString());
+                System.out.print(response.body());
+
+                if (response.statusCode()==200 || response.statusCode()==201 ) {
+                    String jsonResponse = response.body().toString();
+                    ObjectMapper objMap = new ObjectMapper();
+                    Map<String, Object> mapResponse = objMap.readValue(jsonResponse, Map.class);
+                    System.out.println("mapNodeResponse: "+ mapResponse.toString());
+                    if (mapResponse.containsKey(searchString)){
+                        List<Map<String, Object>> mapfound = (List<Map<String, Object>>) mapResponse.get(searchString);
+                        if (mapfound.get(0).containsKey("value")){
+                            foundString = mapfound.get(0).get("value").toString();
+                            System.out.println("foundString----> "+foundString);
+                        }
+                    }
+                }
+                else
+                    throw new Exception("Unexpected status["+response.statusCode()+"] while querying! Error msg:");
+            }
+            catch (Exception e) {
+                    System.out.print("Error msg:"+e.getMessage());
+                    throw e;
+            }
+            return foundString;
+        }
 }
                 
           

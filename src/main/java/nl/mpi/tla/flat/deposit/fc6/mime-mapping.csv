@@ -7,7 +7,7 @@ text/x-toolbox-text;annotation;908;annotation;898;annotation;field_media_file
 application/x-gzip-compressed;archive;908;archive;894;file;field_media_file
 application/zip;archive;908;archive;894;file;field_media_file
 audio/x-wav;audio;908;audio;894;audio;field_media_audio_file
-application/pdf;document;908;document;894;document;field_media_document
+application/pdf;document;685;document;675;document;field_media_document
 application/vnd.oasis.opendocument.presentation;document;908;document;894;document;field_media_document
 application/vnd.oasis.opendocument.spreadsheet;document;908;document;894;document;field_media_document
 application/vnd.oasis.opendocument.text;document;908;document;894;document;field_media_document
